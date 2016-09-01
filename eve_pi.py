@@ -67,6 +67,12 @@ def load_prices(typeIDs):
             lambda x: r.json(x)['items']
         )
 
+    MarketOrders.filter(lambda x: (
+        x['location']['id'] == 60003760
+    ) and (
+        r.expr(typeIDs).contains(x['type']['id'])
+    )).delete().run()
+
     MarketOrders.insert(get_query('sell')).run()
     MarketOrders.insert(get_query('buy')).run()
 
@@ -177,3 +183,7 @@ def drill_reqs(d, required_quantity=None, ret=None):
             ret[d['name']] += required_quantity
 
     return ret
+
+
+def print_reqs(d):
+    print('\n'.join('%s %d' % i for i in drill_reqs(d).items()))
