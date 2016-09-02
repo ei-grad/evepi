@@ -1,0 +1,433 @@
+Broadcast Node #2867
+====================
+
+Broadcast Node x 1 (1 cycles)
+  Neocoms x 6 (2 cycles)
+    Biocells x 20 (4 cycles)
+      Biofuels x 160 = 94,862.40
+      Precious Metals x 160 = 103,572.80
+    Silicate Glass x 20 (4 cycles)
+      Oxidizing Compound x 160 = 111,326.40
+      Silicon x 160 = 151,998.40
+  Data Chips x 6 (2 cycles)
+    Supertensile Plastics x 20 (4 cycles)
+      Oxygen x 160 = 87,518.40
+      Biomass x 160 = 143,996.80
+    Microfiber Shielding x 20 (4 cycles)
+      Industrial Fibers x 160 = 160,000.00
+      Silicon x 160 = 151,998.40
+  High-Tech Transmitter x 6 (2 cycles)
+    Polyaramids x 20 (4 cycles)
+      Oxidizing Compound x 160 = 111,326.40
+      Industrial Fibers x 160 = 160,000.00
+    Transmitter x 20 (4 cycles)
+      Plasmoids x 160 = 89,600.00
+      Chiral Structures x 160 = 189,803.20
+
+Summary
+-------
+
+Requirements sell Jita price:     1,556,003.20
+Requirements buy Jita price:      1,445,376.00
+Item sell price in Jita:          2,509,998.93
+Item buy price in Jita:           2,455,006.26
+Sell->Buy profit (immediate):       899,003.06
+Buy->Buy profit:                  1,009,630.26
+Buy->Sell profit (optimal):       1,064,622.93
+
+List
+----
+
+Biofuels 160
+Precious Metals 160
+Oxidizing Compound 160
+Silicon 160
+Oxygen 160
+Biomass 160
+Industrial Fibers 160
+Silicon 160
+Oxidizing Compound 160
+Industrial Fibers 160
+Plasmoids 160
+Chiral Structures 160
+
+
+Organic Mortar Applicators #2870
+================================
+
+Organic Mortar Applicators x 1 (1 cycles)
+  Condensates x 6 (2 cycles)
+    Oxides x 20 (4 cycles)
+      Oxidizing Compound x 160 = 111,326.40
+      Oxygen x 160 = 87,518.40
+    Coolant x 20 (4 cycles)
+      Electrolytes x 160 = 80,312.00
+      Water x 160 = 69,598.40
+  Robotics x 6 (2 cycles)
+    Mechanical Parts x 20 (4 cycles)
+      Reactive Metals x 160 = 79,945.60
+      Precious Metals x 160 = 103,572.80
+    Consumer Electronics x 20 (4 cycles)
+      Toxic Metals x 160 = 110,790.40
+      Chiral Structures x 160 = 189,803.20
+  Bacteria x 40 = 18,999.60
+
+Summary
+-------
+
+Requirements sell Jita price:       851,866.80
+Requirements buy Jita price:        741,054.40
+Item sell price in Jita:          1,313,328.94
+Item buy price in Jita:           1,210,000.34
+Sell->Buy profit (immediate):       358,133.54
+Buy->Buy profit:                    468,945.94
+Buy->Sell profit (optimal):         572,274.54
+
+List
+----
+
+Oxidizing Compound 160
+Oxygen 160
+Electrolytes 160
+Water 160
+Reactive Metals 160
+Precious Metals 160
+Toxic Metals 160
+Chiral Structures 160
+Bacteria 40
+
+
+Integrity Response Drones #2868
+===============================
+
+Integrity Response Drones x 1 (1 cycles)
+  Gel-Matrix Biopaste x 6 (2 cycles)
+    Oxides x 20 (4 cycles)
+      Oxidizing Compound x 160 = 111,326.40
+      Oxygen x 160 = 87,518.40
+    Biocells x 20 (4 cycles)
+      Biofuels x 160 = 94,862.40
+      Precious Metals x 160 = 103,572.80
+    Superconductors x 20 (4 cycles)
+      Plasmoids x 160 = 89,600.00
+      Water x 160 = 69,598.40
+  Hazmat Detection Systems x 6 (2 cycles)
+    Polytextiles x 20 (4 cycles)
+      Biofuels x 160 = 94,862.40
+      Industrial Fibers x 160 = 160,000.00
+    Viral Agent x 20 (4 cycles)
+      Bacteria x 160 = 75,998.40
+      Biomass x 160 = 143,996.80
+    Transmitter x 20 (4 cycles)
+      Plasmoids x 160 = 89,600.00
+      Chiral Structures x 160 = 189,803.20
+  Planetary Vehicles x 6 (2 cycles)
+    Supertensile Plastics x 20 (4 cycles)
+      Oxygen x 160 = 87,518.40
+      Biomass x 160 = 143,996.80
+    Mechanical Parts x 20 (4 cycles)
+      Reactive Metals x 160 = 79,945.60
+      Precious Metals x 160 = 103,572.80
+    Miniature Electronics x 20 (4 cycles)
+      Chiral Structures x 160 = 189,803.20
+      Silicon x 160 = 151,998.40
+
+Summary
+-------
+
+Requirements sell Jita price:     2,067,574.40
+Requirements buy Jita price:      1,866,643.20
+Item sell price in Jita:          2,799,991.58
+Item buy price in Jita:           2,603,001.04
+Sell->Buy profit (immediate):       535,426.64
+Buy->Buy profit:                    736,357.84
+Buy->Sell profit (optimal):         933,348.38
+
+List
+----
+
+Oxidizing Compound 160
+Oxygen 160
+Biofuels 160
+Precious Metals 160
+Plasmoids 160
+Water 160
+Biofuels 160
+Industrial Fibers 160
+Bacteria 160
+Biomass 160
+Plasmoids 160
+Chiral Structures 160
+Oxygen 160
+Biomass 160
+Reactive Metals 160
+Precious Metals 160
+Chiral Structures 160
+Silicon 160
+
+
+Self-Harmonizing Power Core #2872
+=================================
+
+Self-Harmonizing Power Core x 1 (1 cycles)
+  Camera Drones x 6 (2 cycles)
+    Silicate Glass x 20 (4 cycles)
+      Oxidizing Compound x 160 = 111,326.40
+      Silicon x 160 = 151,998.40
+    Rocket Fuel x 20 (4 cycles)
+      Plasmoids x 160 = 89,600.00
+      Electrolytes x 160 = 80,312.00
+  Nuclear Reactors x 6 (2 cycles)
+    Microfiber Shielding x 20 (4 cycles)
+      Industrial Fibers x 160 = 160,000.00
+      Silicon x 160 = 151,998.40
+    Enriched Uranium x 20 (4 cycles)
+      Precious Metals x 160 = 103,572.80
+      Toxic Metals x 160 = 110,790.40
+  Hermetic Membranes x 6 (2 cycles)
+    Polyaramids x 20 (4 cycles)
+      Oxidizing Compound x 160 = 111,326.40
+      Industrial Fibers x 160 = 160,000.00
+    Genetically Enhanced Livestock x 20 (4 cycles)
+      Proteins x 160 = 124,800.00
+      Biomass x 160 = 143,996.80
+
+Summary
+-------
+
+Requirements sell Jita price:     1,499,721.60
+Requirements buy Jita price:      1,390,300.80
+Item sell price in Jita:          2,536,999.89
+Item buy price in Jita:           2,370,000.00
+Sell->Buy profit (immediate):       870,278.40
+Buy->Buy profit:                    979,699.20
+Buy->Sell profit (optimal):       1,146,699.09
+
+List
+----
+
+Oxidizing Compound 160
+Silicon 160
+Plasmoids 160
+Electrolytes 160
+Industrial Fibers 160
+Silicon 160
+Precious Metals 160
+Toxic Metals 160
+Oxidizing Compound 160
+Industrial Fibers 160
+Proteins 160
+Biomass 160
+
+
+Wetware Mainframe #2876
+=======================
+
+Wetware Mainframe x 1 (1 cycles)
+  Supercomputers x 6 (2 cycles)
+    Water-Cooled CPU x 20 (4 cycles)
+      Reactive Metals x 160 = 79,945.60
+      Water x 160 = 69,598.40
+    Coolant x 20 (4 cycles)
+      Electrolytes x 160 = 80,312.00
+      Water x 160 = 69,598.40
+    Consumer Electronics x 20 (4 cycles)
+      Toxic Metals x 160 = 110,790.40
+      Chiral Structures x 160 = 189,803.20
+  Biotech Research Reports x 6 (2 cycles)
+    Nanites x 20 (4 cycles)
+      Bacteria x 160 = 75,998.40
+      Reactive Metals x 160 = 79,945.60
+    Livestock x 20 (4 cycles)
+      Proteins x 160 = 124,800.00
+      Biofuels x 160 = 94,862.40
+    Construction Blocks x 20 (4 cycles)
+      Reactive Metals x 160 = 79,945.60
+      Toxic Metals x 160 = 110,790.40
+  Cryoprotectant Solution x 6 (2 cycles)
+    Test Cultures x 20 (4 cycles)
+      Bacteria x 160 = 75,998.40
+      Water x 160 = 69,598.40
+    Synthetic Oil x 20 (4 cycles)
+      Electrolytes x 160 = 80,312.00
+      Oxygen x 160 = 87,518.40
+    Fertilizer x 20 (4 cycles)
+      Bacteria x 160 = 75,998.40
+      Proteins x 160 = 124,800.00
+
+Summary
+-------
+
+Requirements sell Jita price:     1,680,616.00
+Requirements buy Jita price:      1,453,497.60
+Item sell price in Jita:          2,599,997.98
+Item buy price in Jita:           2,400,000.00
+Sell->Buy profit (immediate):       719,384.00
+Buy->Buy profit:                    946,502.40
+Buy->Sell profit (optimal):       1,146,500.38
+
+List
+----
+
+Reactive Metals 160
+Water 160
+Electrolytes 160
+Water 160
+Toxic Metals 160
+Chiral Structures 160
+Bacteria 160
+Reactive Metals 160
+Proteins 160
+Biofuels 160
+Reactive Metals 160
+Toxic Metals 160
+Bacteria 160
+Water 160
+Electrolytes 160
+Oxygen 160
+Bacteria 160
+Proteins 160
+
+
+Nano-Factory #2869
+==================
+
+Nano-Factory x 1 (1 cycles)
+  Industrial Explosives x 6 (2 cycles)
+    Fertilizer x 20 (4 cycles)
+      Bacteria x 160 = 75,998.40
+      Proteins x 160 = 124,800.00
+    Polytextiles x 20 (4 cycles)
+      Biofuels x 160 = 94,862.40
+      Industrial Fibers x 160 = 160,000.00
+  Ukomi Superconductor x 6 (2 cycles)
+    Synthetic Oil x 20 (4 cycles)
+      Electrolytes x 160 = 80,312.00
+      Oxygen x 160 = 87,518.40
+    Superconductors x 20 (4 cycles)
+      Plasmoids x 160 = 89,600.00
+      Water x 160 = 69,598.40
+  Reactive Metals x 40 = 19,986.40
+
+Summary
+-------
+
+Requirements sell Jita price:       802,676.00
+Requirements buy Jita price:        727,596.80
+Item sell price in Jita:          1,386,968.98
+Item buy price in Jita:           1,300,057.10
+Sell->Buy profit (immediate):       497,381.10
+Buy->Buy profit:                    572,460.30
+Buy->Sell profit (optimal):         659,372.18
+
+List
+----
+
+Bacteria 160
+Proteins 160
+Biofuels 160
+Industrial Fibers 160
+Electrolytes 160
+Oxygen 160
+Plasmoids 160
+Water 160
+Reactive Metals 40
+
+
+Recursive Computing Module #2871
+================================
+
+Recursive Computing Module x 1 (1 cycles)
+  Synthetic Synapses x 6 (2 cycles)
+    Supertensile Plastics x 20 (4 cycles)
+      Oxygen x 160 = 87,518.40
+      Biomass x 160 = 143,996.80
+    Test Cultures x 20 (4 cycles)
+      Bacteria x 160 = 75,998.40
+      Water x 160 = 69,598.40
+  Guidance Systems x 6 (2 cycles)
+    Water-Cooled CPU x 20 (4 cycles)
+      Reactive Metals x 160 = 79,945.60
+      Water x 160 = 69,598.40
+    Transmitter x 20 (4 cycles)
+      Plasmoids x 160 = 89,600.00
+      Chiral Structures x 160 = 189,803.20
+  Transcranial Microcontroller x 6 (2 cycles)
+    Biocells x 20 (4 cycles)
+      Biofuels x 160 = 94,862.40
+      Precious Metals x 160 = 103,572.80
+    Nanites x 20 (4 cycles)
+      Bacteria x 160 = 75,998.40
+      Reactive Metals x 160 = 79,945.60
+
+Summary
+-------
+
+Requirements sell Jita price:     1,160,438.40
+Requirements buy Jita price:      1,017,638.40
+Item sell price in Jita:          2,239,990.98
+Item buy price in Jita:           2,000,000.01
+Sell->Buy profit (immediate):       839,561.61
+Buy->Buy profit:                    982,361.61
+Buy->Sell profit (optimal):       1,222,352.58
+
+List
+----
+
+Oxygen 160
+Biomass 160
+Bacteria 160
+Water 160
+Reactive Metals 160
+Water 160
+Plasmoids 160
+Chiral Structures 160
+Biofuels 160
+Precious Metals 160
+Bacteria 160
+Reactive Metals 160
+
+
+Sterile Conduits #2875
+======================
+
+Sterile Conduits x 1 (1 cycles)
+  Smartfab Units x 6 (2 cycles)
+    Construction Blocks x 20 (4 cycles)
+      Reactive Metals x 160 = 79,945.60
+      Toxic Metals x 160 = 110,790.40
+    Miniature Electronics x 20 (4 cycles)
+      Chiral Structures x 160 = 189,803.20
+      Silicon x 160 = 151,998.40
+  Vaccines x 6 (2 cycles)
+    Livestock x 20 (4 cycles)
+      Proteins x 160 = 124,800.00
+      Biofuels x 160 = 94,862.40
+    Viral Agent x 20 (4 cycles)
+      Bacteria x 160 = 75,998.40
+      Biomass x 160 = 143,996.80
+  Water x 40 = 17,399.60
+
+Summary
+-------
+
+Requirements sell Jita price:       989,594.80
+Requirements buy Jita price:        881,664.00
+Item sell price in Jita:          1,800,000.00
+Item buy price in Jita:           1,730,000.13
+Sell->Buy profit (immediate):       740,405.33
+Buy->Buy profit:                    848,336.13
+Buy->Sell profit (optimal):         918,336.00
+
+List
+----
+
+Reactive Metals 160
+Toxic Metals 160
+Chiral Structures 160
+Silicon 160
+Proteins 160
+Biofuels 160
+Bacteria 160
+Biomass 160
+Water 40

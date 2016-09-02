@@ -1,3 +1,4 @@
+from copy import deepcopy
 import sys
 import csv
 import sqlite3
@@ -19,20 +20,20 @@ def load_schematics():
 
     schematics = conn.execute(
         '''
-        SELECT schematicID, p.typeID, typeName, quantity
-        FROM planetSchematicsTypeMap p
-        JOIN invtypes t ON t.typeID = p.typeID
-        WHERE isInput = 0
+        SELECT s.schematicID, p.typeID, s.schematicName, p.quantity, s.cycleTime
+        FROM planetSchematics s
+        JOIN planetSchematicsTypeMap p ON p.schematicID = s.schematicID AND p.isInput = 0
         '''
     ).fetchall()
 
     schematics = {
-        i: {
+        schematicID: {
             'id': typeID,
             'name': typeName,
-            'output_quantity': quantity,
+            'quantity_per_cycle': quantity,
+            'cycle_time': cycleTime,
             'reqs': [],
-        } for i, typeID, typeName, quantity in schematics
+        } for schematicID, typeID, typeName, quantity, cycleTime in schematics
     }
 
     reqs = conn.execute(
@@ -48,10 +49,34 @@ def load_schematics():
         schematics[i]['reqs'].append({
             'id': typeID,
             'name': typeName,
-            'input_quantity': quantity
+            'quantity': quantity
         })
 
-    PlanetSchematics.insert(schematics.values()).run()
+    schematics = {i['id']: i for i in schematics.values()}
+
+    def drill_down(typeID, required_quantity=None):
+
+        if typeID not in schematics:
+            return {'level': 0}
+
+        ret = deepcopy(schematics[typeID])
+
+        if required_quantity is None:
+            required_quantity = ret['quantity_per_cycle']
+            ret['quantity'] = ret['quantity_per_cycle']
+            ret['cycles'] = 1
+        else:
+            ret['quantity'] = required_quantity
+            ret['cycles'] = required_quantity / ret['quantity_per_cycle']
+
+        for i in ret['reqs']:
+            i.update(drill_down(i['id'], i['quantity'] * ret['cycles']))
+
+        ret['level'] = max(i['level'] for i in ret['reqs']) + 1
+
+        return ret
+
+    PlanetSchematics.insert([drill_down(i) for i in schematics]).run()
 
 
 def load_prices(typeIDs):
@@ -85,6 +110,27 @@ def load_pi_prices():
     ).run())))
 
 
+# http://stackoverflow.com/a/39301723/2649222
+def format_money(f, delimiter=',', frac_digits=2):
+
+    neg = (f < 0)
+    if neg:
+        f = -f
+
+    s = ('%%.%df' % frac_digits) % f
+    if len(s) < 5 + frac_digits:
+        return ('-' if neg else '') + s
+
+    l = list(s)
+    p = len(s) - frac_digits - 5
+    l[p::-3] = [i + delimiter for i in l[p::-3]]
+
+    return ('-' if neg else '') + ''.join(l)
+
+
+isk = format_money
+
+
 def print_report(out=sys.stdout):
 
     jita_sell = MarketOrders.filter({
@@ -107,14 +153,14 @@ def print_report(out=sys.stdout):
 
     w = csv.writer(out)
     w.writerow(['id', 'name', 'req_sell_price', 'buy', 'sell'])
-    for i in PlanetSchematics.run():
+    for i in PlanetSchematics.filter(r.expr([3, 4]).contains(r.row['level'])).run():
         w.writerow([
             i['id'],
             i['name'],
             sum(jita_sell[j['name']] * j['input_quantity']
                 for j in i['reqs']),
-            '%.2f' % (jita_buy[i['name']] * i['output_quantity']),
-            '%.2f' % (jita_sell[i['name']] * i['output_quantity']),
+            format_money(jita_buy[i['name']] * i['output_quantity']),
+            format_money(jita_sell[i['name']] * i['output_quantity']),
         ])
 
 
@@ -138,31 +184,60 @@ def get_jita_buy(**kwargs):
     ).max().run()
 
 
-def drill_down(typeID, level):
-    ret = PlanetSchematics.get(typeID).run()
-    if ret is None:
-        return {}
-    if level > 0:
-        for i in ret['reqs']:
-            i.update(drill_down(i['id'], level - 1))
-    return ret
+def h1(s):
+    print('\n\n%s\n%s\n' % (s, '=' * len(s)))
 
 
-def drill_report(d, required_quantity=1, prefix=''):
-    if d.get('reqs'):
-        total = 0
-        cycles = required_quantity / d['output_quantity']
-        print('%s%s x %d (%d cycles)' % (prefix, d['name'], required_quantity,
-                                         cycles))
-        for i in d['reqs']:
-            total += drill_report(i, i['input_quantity'] * cycles, prefix + '  ')
-        return total
-    else:
-        print('%s%s x %d = %.2f' % (
-            prefix, d['name'], required_quantity,
-            get_jita_sell(id=d['id']) * required_quantity
-        ))
-        return get_jita_sell(id=d['id']) * required_quantity
+def h2(s):
+    print('\n%s\n%s\n' % (s, '-' * len(s)))
+
+
+def report(d, level):
+
+    assert level >= 0 and level < d['level']
+
+    queue = [('', d)]
+    total_sell = 0
+    total_buy = 0
+
+    reqs = []
+
+    h1('%s #%d' % (d['name'], d['id']))
+
+    while queue:
+        prefix, i = queue.pop(0)
+        if i['level'] > level:
+            print('%s%s x %d (%d cycles)' % (
+                prefix,
+                i['name'],
+                i['quantity'],
+                i['cycles']
+            ))
+            queue = [(prefix + '  ', j) for j in i['reqs']] + queue
+        else:
+            sell_cost = get_jita_sell(id=i['id']) * i['quantity']
+            total_sell += sell_cost
+            total_buy += get_jita_buy(id=i['id']) * i['quantity']
+            print('%s%s x %d = %s' % (prefix, i['name'], i['quantity'], isk(sell_cost)))
+            reqs.append((i['name'], i['quantity']))
+
+    h2('Summary')
+
+    item_sell = get_jita_sell(id=d['id']) * d['quantity']
+    item_buy = get_jita_buy(id=d['id']) * d['quantity']
+
+    print("Requirements sell Jita price: % 16s" % isk(total_sell))
+    print("Requirements buy Jita price:  % 16s" % isk(total_buy))
+    print("Item sell price in Jita:      % 16s" % isk(item_sell))
+    print("Item buy price in Jita:       % 16s" % isk(item_buy))
+    print("Sell->Buy profit (immediate): % 16s" % isk(item_buy - total_sell))
+    print("Buy->Buy profit:              % 16s" % isk(item_buy - total_buy))
+    print("Buy->Sell profit (optimal):   % 16s" % isk(item_sell - total_buy))
+
+    h2('List')
+
+    for name, q in reqs:
+        print(name, q)
 
 
 def drill_reqs(d, required_quantity=None, ret=None):
@@ -192,12 +267,21 @@ def print_reqs(d):
 
 def calculate_all():
     d = [
-        (typeID, level, drill_report(drill_down(typeID, level)))
-        for typeID in PlanetSchematics.map(r.row['id']).run()
-        for level in range(1, 4)
     ]
-    return [
-        (typeID, level, req_price, get_jita_sell(id=typeID) - req_price,
-         get_jita_buy(id=typeID) - req_price)
-        for typeID, level, req_price in d
+    d = [
+        (typeID, name, level, int(req_price + 0.5),
+         int(get_jita_sell(id=typeID) - req_price + 0.5),
+         int(get_jita_buy(id=typeID) - req_price + 0.5))
+        for typeID, name, level, req_price in d
     ]
+    d = [
+        (
+            typeID, name, level, req_price,
+            jita_sell, jita_buy,
+            int(jita_sell / req_price * 100),
+            int(jita_buy / req_price * 100),
+        )
+        for typeID, name, level, req_price, jita_sell, jita_buy in d
+    ]
+    d.sort(key=lambda x: x[-1])
+    return d
