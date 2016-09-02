@@ -106,14 +106,15 @@ def print_report(out=sys.stdout):
     ).max().run()
 
     w = csv.writer(out)
-    w.writerow(['name', 'req_sell_price', 'buy', 'sell'])
+    w.writerow(['id', 'name', 'req_sell_price', 'buy', 'sell'])
     for i in PlanetSchematics.run():
         w.writerow([
+            i['id'],
             i['name'],
             sum(jita_sell[j['name']] * j['input_quantity']
                 for j in i['reqs']),
-            jita_buy[i['name']] * i['output_quantity'],
-            jita_sell[i['name']] * i['output_quantity'],
+            '%.2f' % (jita_buy[i['name']] * i['output_quantity']),
+            '%.2f' % (jita_sell[i['name']] * i['output_quantity']),
         ])
 
 
@@ -187,3 +188,16 @@ def drill_reqs(d, required_quantity=None, ret=None):
 
 def print_reqs(d):
     print('\n'.join('%s %d' % i for i in drill_reqs(d).items()))
+
+
+def calculate_all():
+    d = [
+        (typeID, level, drill_report(drill_down(typeID, level)))
+        for typeID in PlanetSchematics.map(r.row['id']).run()
+        for level in range(1, 4)
+    ]
+    return [
+        (typeID, level, req_price, get_jita_sell(id=typeID) - req_price,
+         get_jita_buy(id=typeID) - req_price)
+        for typeID, level, req_price in d
+    ]
