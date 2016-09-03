@@ -14,9 +14,20 @@ PlanetSchematics = EVE.table('PlanetSchematics')
 MarketOrders = EVE.table('MarketOrders')
 
 
-def load_schematics():
+def create_tables():
 
-    conn = sqlite3.connect('/home/ei-grad/Downloads/eve.db')
+    EVE.table_create('PlanetSchematics').run()
+    EVE.table_create('MarketOrders').run()
+
+    MarketOrders.index_create('type_location_buy', [
+        r.row['type']['id'], r.row['location']['id'], r.row['buy']
+    ]).run()
+
+
+def load_schematics(filename='eve.db'):
+
+    # thanks to Steve Ronuken for https://www.fuzzwork.co.uk/dump/latest/eve.db.bz2
+    conn = sqlite3.connect(filename)
 
     schematics = conn.execute(
         '''
@@ -82,32 +93,44 @@ def load_schematics():
 def load_prices(typeIDs):
 
     def get_query(price_type):
+        url = 'https://crest-tq.eveonline.com/market/10000002/orders/%s/' % price_type
         return r.expr(typeIDs).map(lambda x: r.http(
-            'https://crest-tq.eveonline.com/market/10000002/orders/%s/' % price_type,
+            url,
             params={
                 'type': 'https://crest-tq.eveonline.com/inventory/types/' +
                 x.coerce_to('STRING') + '/'
-            }
-        )).concat_map(
-            lambda x: r.json(x)['items']
-        )
+            },
+            result_format='json',
+        )).concat_map(r.row['items'])
 
-    MarketOrders.filter(lambda x: (
-        x['location']['id'] == 60003760
-    ) and (
-        r.expr(typeIDs).contains(x['type']['id'])
-    )).delete().run()
+    MarketOrders.delete().run()
 
     MarketOrders.insert(get_query('sell')).run()
     MarketOrders.insert(get_query('buy')).run()
 
 
 def load_pi_prices():
-    load_prices(list(set(PlanetSchematics.map(r.row['id']).union(
-        PlanetSchematics
-        .concat_map(r.row['reqs'])
-        .map(r.row['id'])
-    ).run())))
+    load_prices(
+        PlanetSchematics['id'].union(
+            PlanetSchematics.concat_map(r.row['reqs'])['id']
+        ).distinct().run()
+    )
+
+
+def mapreduce_example():
+    return MarketOrders.group(
+        r.row['type']['name'],
+        r.row['location']['name'],
+        r.row['buy'],
+    ).map(lambda x: (x['buy'], x['price'])).reduce(
+        lambda a, b: (a[0], r.branch(
+            a[0],
+            # for buy prices get max price
+            max(a[1], b[1]),
+            # for sell prices get min price
+            min(a[1], b[1])
+        ))
+    ).run()
 
 
 # http://stackoverflow.com/a/39301723/2649222
@@ -164,23 +187,21 @@ def print_report(out=sys.stdout):
         ])
 
 
-def get_jita_sell(**kwargs):
-    return MarketOrders.filter({
-        'location': {'id': 60003760},
-        'buy': False,
-        'type': kwargs,
-    }).map(
-        lambda x: x['price']
+def get_jita_sell(typeID):
+    return MarketOrders.get_all(
+        [typeID, 60003760, False],
+        index='type_location_buy'
+    ).map(
+        r.row['price']
     ).min().run()
 
 
-def get_jita_buy(**kwargs):
-    return MarketOrders.filter({
-        'location': {'id': 60003760},
-        'buy': True,
-        'type': kwargs,
-    }).map(
-        lambda x: x['price']
+def get_jita_buy(typeID):
+    return MarketOrders.get_all(
+        [typeID, 60003760, True],
+        index='type_location_buy'
+    ).map(
+        r.row['price']
     ).max().run()
 
 
@@ -193,6 +214,11 @@ def h2(s):
 
 
 def report(d, level):
+
+    if isinstance(d, int):
+        d = PlanetSchematics.get(d).run()
+    elif isinstance(d, str):
+        d = next(PlanetSchematics.filter(r.row['name'] == d).run())
 
     assert level >= 0 and level < d['level']
 
@@ -207,24 +233,25 @@ def report(d, level):
     while queue:
         prefix, i = queue.pop(0)
         if i['level'] > level:
-            print('%s%s x %d (%d cycles)' % (
+            print('%s%s x %d (%d cycles) %s' % (
                 prefix,
                 i['name'],
                 i['quantity'],
-                i['cycles']
+                i['cycles'],
+                isk(get_jita_sell(i['id']) * i['quantity'])
             ))
             queue = [(prefix + '  ', j) for j in i['reqs']] + queue
         else:
-            sell_cost = get_jita_sell(id=i['id']) * i['quantity']
+            sell_cost = get_jita_sell(i['id']) * i['quantity']
             total_sell += sell_cost
-            total_buy += get_jita_buy(id=i['id']) * i['quantity']
+            total_buy += get_jita_buy(i['id']) * i['quantity']
             print('%s%s x %d = %s' % (prefix, i['name'], i['quantity'], isk(sell_cost)))
             reqs.append((i['name'], i['quantity']))
 
     h2('Summary')
 
-    item_sell = get_jita_sell(id=d['id']) * d['quantity']
-    item_buy = get_jita_buy(id=d['id']) * d['quantity']
+    item_sell = get_jita_sell(d['id']) * d['quantity']
+    item_buy = get_jita_buy(d['id']) * d['quantity']
 
     print("Requirements sell Jita price: % 16s" % isk(total_sell))
     print("Requirements buy Jita price:  % 16s" % isk(total_buy))
@@ -238,3 +265,38 @@ def report(d, level):
 
     for name, q in reqs:
         print(name, q)
+
+
+def summary(d, level):
+
+    queue = [d]
+    reqs_sell = 0
+    reqs_buy = 0
+
+    while queue:
+        i = queue.pop(0)
+        if i['level'] > level:
+            queue.extend(i['reqs'])
+        else:
+            reqs_sell += get_jita_sell(i['id']) * i['quantity']
+            reqs_buy += get_jita_buy(i['id']) * i['quantity']
+
+    item_sell = get_jita_sell(d['id']) * d['quantity']
+    item_buy = get_jita_buy(d['id']) * d['quantity']
+
+    return {
+        'id': d['id'],
+        'name': d['name'],
+        'item_sell': item_sell,
+        'item_buy': item_buy,
+        'reqs_sell': reqs_sell,
+        'reqs_buy': reqs_buy,
+        'profit': (item_buy - reqs_sell),
+    }
+
+
+def compare_all():
+    s = PlanetSchematics.filter(r.row['level'] == 4).run()
+    d = [summary(i, 1) for i in s]
+    d.sort(key=lambda x: x['profit'])
+    return d
