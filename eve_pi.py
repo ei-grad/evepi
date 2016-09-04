@@ -85,6 +85,7 @@ def load_schematics(filename='eve.db'):
 
         return ret
 
+    PlanetSchematics.delete().run()
     PlanetSchematics.insert([drill_down(i) for i in schematics]).run()
 
 
@@ -218,13 +219,32 @@ def report(d, level):
     item_sell = get_jita_sell(d['id']) * d['quantity']
     item_buy = get_jita_buy(d['id']) * d['quantity']
 
-    print("Requirements sell Jita price: % 16s" % isk(total_sell))
-    print("Requirements buy Jita price:  % 16s" % isk(total_buy))
-    print("Item sell price in Jita:      % 16s" % isk(item_sell))
-    print("Item buy price in Jita:       % 16s" % isk(item_buy))
-    print("Sell->Buy profit (immediate): % 16s" % isk(item_buy - total_sell))
-    print("Buy->Buy profit:              % 16s" % isk(item_buy - total_buy))
-    print("Buy->Sell profit (optimal):   % 16s" % isk(item_sell - total_buy))
+    print("Requirements sell Jita price:  % 16s" % isk(total_sell))
+    print("Requirements buy Jita price:   % 16s" % isk(total_buy))
+    print("Item sell price in Jita:       % 16s" % isk(item_sell))
+    print("Item buy price in Jita:        % 16s" % isk(item_buy))
+    print("Buy->Buy profit (buy diff):    % 16s" % isk(item_buy - total_buy))
+    print("Buy->Sell profit (optimal):    % 16s" % isk(item_sell - total_buy))
+    print("Sell->Buy profit (immediate):  % 16s" % isk(item_buy - total_sell))
+    print("Sell->Sell profit (sell diff): % 16s" % isk(item_sell - total_sell))
+
+    if d['level'] == 4 and level == 1:
+        h2('Replace P1 by P3')
+        l = []
+        for i in d['reqs']:
+            if i['level'] == 3:
+                s = summary(i, 1)
+                l.append('%-35s % 11s' % (
+                    '%s %d:' % (i['name'], i['quantity']),
+                    '+' + isk(s['item_sell'] - s['reqs_sell']),
+                ))
+                l.append(
+                    '\n'.join(
+                        k['name'] + ' ' + str(k['quantity'])
+                        for j in i['reqs'] for k in j['reqs']
+                    )
+                )
+        print('\n\n'.join(l))
 
     h2('List')
 
