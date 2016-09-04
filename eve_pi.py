@@ -139,7 +139,7 @@ def format_money(f, delimiter=',', frac_digits=2):
     if neg:
         f = -f
 
-    s = ('%%.%df' % frac_digits) % f
+    s = '%.*f' % (frac_digits, f)
     if len(s) < 5 + frac_digits:
         return ('-' if neg else '') + s
 
