@@ -1,6 +1,4 @@
 from copy import deepcopy
-import sys
-import csv
 import sqlite3
 
 import rethinkdb as r
@@ -152,39 +150,6 @@ def format_money(f, delimiter=',', frac_digits=2):
 
 
 isk = format_money
-
-
-def print_report(out=sys.stdout):
-
-    jita_sell = MarketOrders.filter({
-        'location': {'id': 60003760},
-        'buy': False,
-    }).group(
-        r.row['type']['name']
-    ).map(
-        lambda x: x['price']
-    ).min().run()
-
-    jita_buy = MarketOrders.filter({
-        'location': {'id': 60003760},
-        'buy': True,
-    }).group(
-        r.row['type']['name']
-    ).map(
-        lambda x: x['price']
-    ).max().run()
-
-    w = csv.writer(out)
-    w.writerow(['id', 'name', 'req_sell_price', 'buy', 'sell'])
-    for i in PlanetSchematics.filter(r.expr([3, 4]).contains(r.row['level'])).run():
-        w.writerow([
-            i['id'],
-            i['name'],
-            sum(jita_sell[j['name']] * j['input_quantity']
-                for j in i['reqs']),
-            format_money(jita_buy[i['name']] * i['output_quantity']),
-            format_money(jita_sell[i['name']] * i['output_quantity']),
-        ])
 
 
 def get_jita_sell(typeID):
