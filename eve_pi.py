@@ -134,20 +134,57 @@ def mapreduce_example():
 
 # http://stackoverflow.com/a/39301723/2649222
 def format_money(f, delimiter=',', frac_digits=2):
+    '''
+    >>> format_money(1.7777)
+    '1.78'
+    >>> format_money(-1.7777)
+    '-1.78'
+    >>> format_money(12.7777)
+    '12.78'
+    >>> format_money(-12.7777)
+    '-12.78'
+    >>> format_money(123.7777)
+    '123.78'
+    >>> format_money(-123.7777)
+    '-123.78'
+    >>> format_money(1234.7777)
+    '1,234.78'
+    >>> format_money(-1234.7777)
+    '-1,234.78'
+    >>> format_money(12345.7777)
+    '12,345.78'
+    >>> format_money(-12345.7777)
+    '-12,345.78'
+    >>> format_money(123456.7777)
+    '123,456.78'
+    >>> format_money(-123456.7777)
+    '-123,456.78'
+    >>> format_money(1234567.7777)
+    '1,234,567.78'
+    >>> format_money(-1234567.7777)
+    '-1,234,567.78'
+    >>> format_money(12345678.7777)
+    '12,345,678.78'
+    >>> format_money(-12345678.7777)
+    '-12,345,678.78'
+    >>> format_money(123456789.7777)
+    '123,456,789.78'
+    >>> format_money(-123456789.7777)
+    '-123,456,789.78'
+    '''
 
-    neg = (f < 0)
-    if neg:
-        f = -f
+    negative_fix = int(f < 0)
 
     s = '%.*f' % (frac_digits, f)
-    if len(s) < 5 + frac_digits:
-        return ('-' if neg else '') + s
+    if len(s) < 5 + frac_digits + negative_fix:
+        return s
 
     l = list(s)
-    p = len(s) - frac_digits - 5
-    l[p::-3] = [i + delimiter for i in l[p::-3]]
+    l_fix = l[negative_fix:]
+    p = len(l_fix) - frac_digits - 5
+    l_fix[p::-3] = [i + delimiter for i in l_fix[p::-3]]
 
-    return ('-' if neg else '') + ''.join(l)
+    return ''.join(l[:negative_fix] + l_fix)
 
 
 isk = format_money
