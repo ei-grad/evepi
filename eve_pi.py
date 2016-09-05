@@ -12,7 +12,11 @@ PlanetSchematics = EVE.table('PlanetSchematics')
 MarketOrders = EVE.table('MarketOrders')
 
 
-def create_tables():
+def syncdb():
+
+    if 'eve' in r.db_list().run():
+        r.db_drop('eve').run()
+        r.db_create('eve').run()
 
     EVE.table_create('PlanetSchematics').run()
     EVE.table_create('MarketOrders').run()
