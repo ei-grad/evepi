@@ -138,9 +138,9 @@ def mapreduce_example():
         lambda a, b: (a[0], r.branch(
             a[0],
             # for buy prices get max price
-            max(a[1], b[1]),
+            r.max(a[1], b[1]),
             # for sell prices get min price
-            min(a[1], b[1])
+            r.min(a[1], b[1])
         ))
     ).run()
 
