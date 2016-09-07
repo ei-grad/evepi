@@ -95,9 +95,12 @@ def load_schematics(filename='eve.db'):
 
 def load_prices(typeIDs):
 
+    if isinstance(typeIDs, list):
+        typeIDs = r.expr(typeIDs)
+
     def get_query(price_type):
         url = 'https://crest-tq.eveonline.com/market/10000002/orders/%s/' % price_type
-        return r.expr(typeIDs).map(lambda x: r.http(
+        return typeIDs.map(lambda x: r.http(
             url,
             params={
                 'type': 'https://crest-tq.eveonline.com/inventory/types/' +
@@ -113,11 +116,17 @@ def load_prices(typeIDs):
 
 
 def load_pi_prices():
+
     load_prices(
         PlanetSchematics['id'].union(
             PlanetSchematics.concat_map(r.row['reqs'])['id']
-        ).distinct().run()
+        ).distinct()
     )
+
+    PlanetSchematics.update(
+        lambda x: with_price(x),
+        non_atomic=True
+    ).run()
 
 
 def mapreduce_example():
@@ -223,9 +232,9 @@ def h2(s):
 def report(d, level):
 
     if isinstance(d, int):
-        d = PlanetSchematics.get(d).run()
+        d = with_price(PlanetSchematics.get(d)).run()
     elif isinstance(d, str):
-        d = next(PlanetSchematics.filter(r.row['name'] == d).run())
+        d = next(with_price(PlanetSchematics.get_all(d, index='name')).run())
 
     assert level >= 0 and level < d['level']
 
@@ -249,9 +258,9 @@ def report(d, level):
             ))
             queue = [(prefix + '  ', j) for j in i['reqs']] + queue
         else:
-            sell_cost = get_jita_sell(i['id']) * i['quantity']
+            sell_cost = i['sell_price'] * i['quantity']
             total_sell += sell_cost
-            total_buy += get_jita_buy(i['id']) * i['quantity']
+            total_buy += i['buy_price'] * i['quantity']
             print('%s%s x %d = %s' % (prefix, i['name'], i['quantity'], isk(sell_cost)))
             reqs.append((i['name'], i['quantity']))
 
@@ -326,3 +335,32 @@ def compare_all():
     d = [summary(i, 1) for i in s]
     d.sort(key=lambda x: x['profit'])
     return d
+
+
+def with_price(items, depth=1):
+
+    if depth > 5:
+        return None
+
+    def q(typeID, buy):
+        return MarketOrders.get_all(
+            [typeID, 60003760, buy],
+            index='type_location_buy'
+        ).filter(
+            lambda x: x['volumeEntered'] > 100
+        ).map(
+            lambda x: x['price']
+        )
+
+    return items.merge(lambda x: {
+        'buy_price': q(x['id'], True).max(),
+        'sell_price': q(x['id'], False).min(),
+    }).merge(lambda x: r.branch(
+        x['reqs'].default(False),
+        {'reqs': with_price(x['reqs'], depth + 1)},
+        {},
+    )).merge(lambda x: {
+        'price_diff': x['sell_price'] - x['buy_price']
+    }).merge(lambda x: {
+        'price_diff_percents': (x['price_diff'] / x['sell_price']) * 100
+    })
