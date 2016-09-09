@@ -109,17 +109,17 @@ def load_prices(typeIDs):
             result_format='json',
         )).concat_map(r.row['items'])
 
-    MarketOrders.delete().run()
+    MarketOrders.insert(get_query('sell'), conflict='replace').run()
+    MarketOrders.insert(get_query('buy'), conflict='replace').run()
 
-    MarketOrders.insert(get_query('sell')).run()
-    MarketOrders.insert(get_query('buy')).run()
+
 
 
 def load_pi_prices():
 
     load_prices(
-        PlanetSchematics['id'].union(
-            PlanetSchematics.concat_map(r.row['reqs'])['id']
+        PlanetSchematics.map(lambda x: x['id']).union(
+            PlanetSchematics.concat_map(r.row['reqs']).map(lambda x: x['id'])
         ).distinct()
     )
 
@@ -129,20 +129,41 @@ def load_pi_prices():
     ).run()
 
 
+def load_all_prices():
+    typeIDs = r.http(
+        'https://crest-tq.eveonline.com/market/types/',
+        result_format='json',
+        page=lambda x: x['next']['href'].default(None),
+        page_limit=-1
+    ).concat_map(r.row['items']).map(lambda x: x['type']['id'])
+    load_prices(typeIDs)
+
+
 def mapreduce_example():
-    return MarketOrders.group(
+    return MarketOrders.filter(r.and_(
+        r.row['location']['id'] == 60003760,
+        r.row['price'] * r.row['volume'] > 10000000,
+    )).group(
         r.row['type']['name'],
-        r.row['location']['name'],
-        r.row['buy'],
-    ).map(lambda x: (x['buy'], x['price'])).reduce(
-        lambda a, b: (a[0], r.branch(
-            a[0],
-            # for buy prices get max price
-            r.max(a[1], b[1]),
-            # for sell prices get min price
-            r.min(a[1], b[1])
-        ))
-    ).run()
+    ).map(lambda x: r.branch(
+        x['buy'],
+        {'buy_price': x['price']},
+        {'sell_price': x['price']},
+    )).reduce(lambda a, b: {
+        'buy_price': r.max([
+            a['buy_price'].default(0),
+            b['buy_price'].default(0),
+        ]),
+        'sell_price': r.min([
+            a['sell_price'].default(1e100),
+            b['sell_price'].default(1e100),
+        ]),
+    }).ungroup().has_fields({
+        'reduction': ['sell_price', 'buy_price']
+    }).map(lambda x: x['reduction'].merge({
+        'name': x['group'],
+        'diff': x['reduction']['sell_price'] - x['reduction']['buy_price'],
+    })).order_by('diff').run()
 
 
 # http://stackoverflow.com/a/39301723/2649222
@@ -238,49 +259,12 @@ def report(d, level):
 
     assert level >= 0 and level < d['level']
 
-    queue = [('', d)]
-    total_sell = 0
-    total_buy = 0
-
-    reqs = []
-
     h1('%s #%d' % (d['name'], d['id']))
 
-    while queue:
-        prefix, i = queue.pop(0)
-        if i['level'] > level:
-            print('%s%s x %d (%d cycles) %s' % (
-                prefix,
-                i['name'],
-                i['quantity'],
-                i['cycles'],
-                isk(get_jita_sell(i['id']) * i['quantity'])
-            ))
-            queue = [(prefix + '  ', j) for j in i['reqs']] + queue
-        else:
-            sell_cost = i['sell_price'] * i['quantity']
-            total_sell += sell_cost
-            total_buy += i['buy_price'] * i['quantity']
-            print('%s%s x %d = %s' % (prefix, i['name'], i['quantity'], isk(sell_cost)))
-            reqs.append((i['name'], i['quantity']))
-
-    h2('Summary')
-
-    item_sell = get_jita_sell(d['id']) * d['quantity']
-    item_buy = get_jita_buy(d['id']) * d['quantity']
-
-    print("Requirements sell Jita price:  % 16s" % isk(total_sell))
-    print("Requirements buy Jita price:   % 16s" % isk(total_buy))
-    print("Item sell price in Jita:       % 16s" % isk(item_sell))
-    print("Item buy price in Jita:        % 16s" % isk(item_buy))
-    print("Buy->Buy profit (buy diff):    % 16s" % isk(item_buy - total_buy))
-    print("Buy->Sell profit (optimal):    % 16s" % isk(item_sell - total_buy))
-    print("Sell->Buy profit (immediate):  % 16s" % isk(item_buy - total_sell))
-    print("Sell->Sell profit (sell diff): % 16s" % isk(item_sell - total_sell))
-
     if d['level'] == 4 and level == 1:
-        h2('Replace P1 by P3')
+
         l = []
+
         for i in d['reqs']:
             if i['level'] == 3:
                 s = summary(i, 1)
@@ -296,10 +280,56 @@ def report(d, level):
                 )
         print('\n\n'.join(l))
 
-    h2('List')
+        print_ = lambda x: None  # noqa
+        print_list = False
 
-    for name, q in reqs:
-        print(name, q)
+    else:
+
+        print_ = print
+        print_list = True
+
+    queue = [('', d)]
+    total_sell = 0
+    total_buy = 0
+
+    reqs = []
+
+    while queue:
+        prefix, i = queue.pop(0)
+        if i['level'] > level:
+            print_('%s%s x %d (%d cycles) %s' % (
+                prefix,
+                i['name'],
+                i['quantity'],
+                i['cycles'],
+                isk(get_jita_sell(i['id']) * i['quantity'])
+            ))
+            queue = [(prefix + '  ', j) for j in i['reqs']] + queue
+        else:
+            sell_cost = i['sell_price'] * i['quantity']
+            total_sell += sell_cost
+            total_buy += i['buy_price'] * i['quantity']
+            print_('%s%s x %d = %s' % (prefix, i['name'], i['quantity'], isk(sell_cost)))
+            reqs.append((i['name'], i['quantity']))
+
+    h2('Summary')
+
+    item_sell = d['sell_price'] * d['quantity']
+    item_buy = d['buy_price'] * d['quantity']
+
+    print("Requirements sell Jita price:  % 16s" % isk(total_sell))
+    print("Requirements buy Jita price:   % 16s" % isk(total_buy))
+    print("Item sell price in Jita:       % 16s" % isk(item_sell))
+    print("Item buy price in Jita:        % 16s" % isk(item_buy))
+    print("Buy->Buy profit (buy diff):    % 16s" % isk(item_buy - total_buy))
+    print("Buy->Sell profit (optimal):    % 16s" % isk(item_sell - total_buy))
+    print("Sell->Buy profit (immediate):  % 16s" % isk(item_buy - total_sell))
+    print("Sell->Sell profit (sell diff): % 16s" % isk(item_sell - total_sell))
+
+    if print_list:
+        h2('List')
+        for name, q in reqs:
+            print(name, q)
 
 
 def summary(d, level):
