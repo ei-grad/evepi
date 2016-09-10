@@ -1,5 +1,10 @@
 from copy import deepcopy
 import sqlite3
+import asyncio
+import logging
+
+import aiohttp
+from aiohttp.protocol import HttpMessage
 
 import rethinkdb as r
 
@@ -93,18 +98,59 @@ def load_schematics(filename='eve.db'):
     PlanetSchematics.insert([drill_down(i) for i in schematics]).run()
 
 
-def load_prices(typeIDs):
+CREST_URL = 'https://crest-tq.eveonline.com/'
+
+
+def fetch_orders(typeIDs):
+    urls = [
+        {'url': CREST_URL + 'market/10000002/orders/%s/' % order_type,
+         'params': {'type': CREST_URL + 'inventory/types/%s/' % type_id}}
+        for type_id in typeIDs
+        for order_type in ['sell', 'buy']
+    ]
+    return fetch_items(urls)
+
+
+def fetch_items(kwargs_list):
+
+    futures = []
+
+    loop = asyncio.get_event_loop()
+
+    with aiohttp.ClientSession(
+        connector=aiohttp.TCPConnector(limit=20),
+        headers={'User-Agent': 'PI Master (https://pi.ei-grad.ru %s)' % (HttpMessage.SERVER_SOFTWARE)}
+    ) as session:
+
+        async def get_items(**kwargs):
+            async with session.get(**kwargs) as resp:
+                logging.info("get_items response: %s %s", kwargs, resp)
+                data = await resp.json()
+                logging.debug("get_items json: %s %s", kwargs, data)
+                if 'next' in data:
+                    futures.append(loop.create_task(get_items(url=data['next']['href'])))
+                return data['items']
+
+        for i in kwargs_list:
+            futures.append(loop.create_task(get_items(**i)))
+
+        while futures:
+            f = futures.pop(0)
+            loop.run_until_complete(f)
+            yield from f.result()
+
+
+def load_prices_rethink(typeIDs):
 
     if isinstance(typeIDs, list):
         typeIDs = r.expr(typeIDs)
 
     def get_query(price_type):
-        url = 'https://crest-tq.eveonline.com/market/10000002/orders/%s/' % price_type
+        url = CREST_URL + 'market/10000002/orders/%s/' % price_type
         return typeIDs.map(lambda x: r.http(
             url,
             params={
-                'type': 'https://crest-tq.eveonline.com/inventory/types/' +
-                x.coerce_to('STRING') + '/'
+                'type': CREST_URL + 'inventory/types/' + x.coerce_to('STRING') + '/'
             },
             result_format='json',
         )).concat_map(r.row['items'])
@@ -113,6 +159,8 @@ def load_prices(typeIDs):
     MarketOrders.insert(get_query('buy'), conflict='replace').run()
 
 
+def load_prices(typeIDs):
+    MarketOrders.insert(fetch_orders(typeIDs)).run()
 
 
 def load_pi_prices():
