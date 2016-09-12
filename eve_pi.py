@@ -101,21 +101,22 @@ def load_schematics(filename='eve.db'):
 CREST_URL = 'https://crest-tq.eveonline.com/'
 
 
-def fetch_orders(typeIDs):
+def fetch_orders(types, region_id=10000002, loop=None):
     urls = [
-        {'url': CREST_URL + 'market/10000002/orders/%s/' % order_type,
+        {'url': CREST_URL + 'market/%d/orders/%s/' % (region_id, order_type),
          'params': {'type': CREST_URL + 'inventory/types/%s/' % type_id}}
-        for type_id in typeIDs
+        for type_id in types
         for order_type in ['sell', 'buy']
     ]
     return fetch_items(urls)
 
 
-def fetch_items(kwargs_list):
+def fetch_items(kwargs_list, loop=None):
 
     futures = []
 
-    loop = asyncio.get_event_loop()
+    if loop is None:
+        loop = asyncio.get_event_loop()
 
     with aiohttp.ClientSession(
         connector=aiohttp.TCPConnector(limit=20),
@@ -160,31 +161,32 @@ def load_prices_rethink(typeIDs):
 
 
 def load_prices(typeIDs):
-    MarketOrders.insert(fetch_orders(typeIDs)).run()
+    MarketOrders.insert(fetch_orders(typeIDs), conflict='replace').run()
 
 
 def load_pi_prices():
 
-    load_prices(
+    ret1 = load_prices(
         PlanetSchematics.map(lambda x: x['id']).union(
             PlanetSchematics.concat_map(r.row['reqs']).map(lambda x: x['id'])
-        ).distinct()
+        ).distinct().run()
     )
 
-    PlanetSchematics.update(
+    ret2 = PlanetSchematics.update(
         lambda x: with_price(x),
         non_atomic=True
     ).run()
 
+    return {
+        'prices': ret1,
+        'schematics': ret2,
+    }
+
 
 def load_all_prices():
-    typeIDs = r.http(
-        'https://crest-tq.eveonline.com/market/types/',
-        result_format='json',
-        page=lambda x: x['next']['href'].default(None),
-        page_limit=-1
-    ).concat_map(r.row['items']).map(lambda x: x['type']['id'])
-    load_prices(typeIDs)
+    return load_prices(i['id'] for i in fetch_items([{
+        'url': 'https://crest-tq.eveonline.com/market/types/',
+    }]))
 
 
 def mapreduce_example():
@@ -309,7 +311,51 @@ def report(d, level):
 
     h1('%s #%d' % (d['name'], d['id']))
 
+    queue = [('', d)]
+    total_sell = 0
+    total_buy = 0
+
+    reqs = []
+
+    while queue:
+        prefix, i = queue.pop(0)
+        if i['level'] > level:
+            print('%s%s x %d (%d cycles) %s' % (
+                prefix,
+                i['name'],
+                i['quantity'],
+                i['cycles'],
+                isk(get_jita_sell(i['id']) * i['quantity'])
+            ))
+            queue = [(prefix + '  ', j) for j in i['reqs']] + queue
+        else:
+            sell_cost = i['sell_price'] * i['quantity']
+            total_sell += sell_cost
+            total_buy += i['buy_price'] * i['quantity']
+            print('%s%s x %d = %s' % (prefix, i['name'], i['quantity'], isk(sell_cost)))
+            reqs.append((i['name'], i['quantity']))
+
+    h2('Summary')
+
+    item_sell = d['sell_price'] * d['quantity']
+    item_buy = d['buy_price'] * d['quantity']
+
+    print("Requirements sell Jita price:  % 16s" % isk(total_sell))
+    print("Requirements buy Jita price:   % 16s" % isk(total_buy))
+    print("Item sell price in Jita:       % 16s" % isk(item_sell))
+    print("Item buy price in Jita:        % 16s" % isk(item_buy))
+    print("Buy->Buy profit (buy diff):    % 16s" % isk(item_buy - total_buy))
+    print("Buy->Sell profit (optimal):    % 16s" % isk(item_sell - total_buy))
+    print("Sell->Buy profit (immediate):  % 16s" % isk(item_buy - total_sell))
+    print("Sell->Sell profit (sell diff): % 16s" % isk(item_sell - total_sell))
+
+    h2('List')
+    for name, q in reqs:
+        print(name, q)
+
     if d['level'] == 4 and level == 1:
+
+        h2('Replace P1 by P3')
 
         l = []
 
@@ -327,57 +373,6 @@ def report(d, level):
                     )
                 )
         print('\n\n'.join(l))
-
-        print_ = lambda x: None  # noqa
-        print_list = False
-
-    else:
-
-        print_ = print
-        print_list = True
-
-    queue = [('', d)]
-    total_sell = 0
-    total_buy = 0
-
-    reqs = []
-
-    while queue:
-        prefix, i = queue.pop(0)
-        if i['level'] > level:
-            print_('%s%s x %d (%d cycles) %s' % (
-                prefix,
-                i['name'],
-                i['quantity'],
-                i['cycles'],
-                isk(get_jita_sell(i['id']) * i['quantity'])
-            ))
-            queue = [(prefix + '  ', j) for j in i['reqs']] + queue
-        else:
-            sell_cost = i['sell_price'] * i['quantity']
-            total_sell += sell_cost
-            total_buy += i['buy_price'] * i['quantity']
-            print_('%s%s x %d = %s' % (prefix, i['name'], i['quantity'], isk(sell_cost)))
-            reqs.append((i['name'], i['quantity']))
-
-    h2('Summary')
-
-    item_sell = d['sell_price'] * d['quantity']
-    item_buy = d['buy_price'] * d['quantity']
-
-    print("Requirements sell Jita price:  % 16s" % isk(total_sell))
-    print("Requirements buy Jita price:   % 16s" % isk(total_buy))
-    print("Item sell price in Jita:       % 16s" % isk(item_sell))
-    print("Item buy price in Jita:        % 16s" % isk(item_buy))
-    print("Buy->Buy profit (buy diff):    % 16s" % isk(item_buy - total_buy))
-    print("Buy->Sell profit (optimal):    % 16s" % isk(item_sell - total_buy))
-    print("Sell->Buy profit (immediate):  % 16s" % isk(item_buy - total_sell))
-    print("Sell->Sell profit (sell diff): % 16s" % isk(item_sell - total_sell))
-
-    if print_list:
-        h2('List')
-        for name, q in reqs:
-            print(name, q)
 
 
 def summary(d, level):
