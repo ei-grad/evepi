@@ -139,12 +139,12 @@ def fetch_items(kwargs_seq, limit=20, loop=None):
                 return data['items']
 
         try:
-            for i in range(limit - 1):
+            for i in range(1000):
                 futures.append(loop.create_task(get_items(**next(kwargs_seq))))
 
             for i in kwargs_seq:
-                futures.append(loop.create_task(get_items(**i)))
                 yield from loop.run_until_complete(futures.popleft())
+                futures.append(loop.create_task(get_items(**i)))
         except StopIteration:
             pass
 
