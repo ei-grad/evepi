@@ -1,4 +1,6 @@
 from copy import deepcopy
+from itertools import islice
+from collections import deque
 import sqlite3
 import asyncio
 import logging
@@ -17,7 +19,7 @@ PlanetSchematics = EVE.table('PlanetSchematics')
 MarketOrders = EVE.table('MarketOrders')
 
 
-def syncdb():
+def recreate(evedb='eve.db'):
 
     if 'eve' in r.db_list().run():
         r.db_drop('eve').run()
@@ -29,6 +31,9 @@ def syncdb():
     MarketOrders.index_create('type_location_buy', [
         r.row['type']['id'], r.row['location']['id'], r.row['buy']
     ]).run()
+
+    load_schematics()
+    load_pi_prices()
 
 
 def load_schematics(filename='eve.db'):
@@ -111,15 +116,16 @@ def fetch_orders(types, region_id=10000002, loop=None):
     return fetch_items(urls)
 
 
-def fetch_items(kwargs_list, loop=None):
+def fetch_items(kwargs_seq, limit=20, loop=None):
 
-    futures = []
+    kwargs_seq = iter(kwargs_seq)
+    futures = deque()
 
     if loop is None:
         loop = asyncio.get_event_loop()
 
     with aiohttp.ClientSession(
-        connector=aiohttp.TCPConnector(limit=20),
+        connector=aiohttp.TCPConnector(limit=limit),
         headers={'User-Agent': 'PI Master (https://pi.ei-grad.ru %s)' % (HttpMessage.SERVER_SOFTWARE)}
     ) as session:
 
@@ -132,13 +138,18 @@ def fetch_items(kwargs_list, loop=None):
                     futures.append(loop.create_task(get_items(url=data['next']['href'])))
                 return data['items']
 
-        for i in kwargs_list:
-            futures.append(loop.create_task(get_items(**i)))
+        try:
+            for i in range(limit - 1):
+                futures.append(loop.create_task(get_items(**next(kwargs_seq))))
+
+            for i in kwargs_seq:
+                futures.append(loop.create_task(get_items(**i)))
+                yield from loop.run_until_complete(futures.popleft())
+        except StopIteration:
+            pass
 
         while futures:
-            f = futures.pop(0)
-            loop.run_until_complete(f)
-            yield from f.result()
+            yield from loop.run_until_complete(futures.popleft())
 
 
 def load_prices_rethink(typeIDs):
@@ -160,8 +171,18 @@ def load_prices_rethink(typeIDs):
     MarketOrders.insert(get_query('buy'), conflict='replace').run()
 
 
+def chunks(iterable, chunk_size):
+    iterable = iter(iterable)
+    while True:
+        chunk = tuple(islice(iterable, chunk_size))
+        if not chunk:
+            return
+        yield chunk
+
+
 def load_prices(typeIDs):
-    MarketOrders.insert(fetch_orders(typeIDs), conflict='replace').run()
+    for chunk in chunks(fetch_orders(typeIDs), 1000):
+        MarketOrders.insert(chunk, conflict='replace').run()
 
 
 def load_pi_prices():
@@ -213,7 +234,9 @@ def mapreduce_example():
     }).map(lambda x: x['reduction'].merge({
         'name': x['group'],
         'diff': x['reduction']['sell_price'] - x['reduction']['buy_price'],
-    })).order_by('diff').run()
+    })).merge(lambda x: {
+        'diff_percents': x['diff'] / x['buy_price'] * 100.
+    }).order_by('diff_percents')
 
 
 # http://stackoverflow.com/a/39301723/2649222
