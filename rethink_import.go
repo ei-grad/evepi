@@ -1,89 +1,94 @@
 package main
 
 import (
-	"bufio"
-	"encoding/json"
-	"fmt"
-	r "gopkg.in/dancannon/gorethink.v2"
-	"log"
-	"os"
-	"runtime"
+    "bufio"
+    "encoding/json"
+    "fmt"
+    r "gopkg.in/dancannon/gorethink.v2"
+    "log"
+    "os"
 )
 
-type chunk [1000]map[string]interface{}
+const NUM_WRITERS = 64
+const CHUNKSIZE = 256
+
+type chunk []map[string]interface{}
 
 func Writer(ch chan chunk, done chan bool) {
 
-	session, err := r.Connect(r.ConnectOpts{
-	//Address: "localhost",
-	})
-	if err != nil {
-		log.Fatalln(err)
-	}
+    session, err := r.Connect(r.ConnectOpts{
+    //Address: "localhost",
+    })
+    if err != nil {
+        log.Fatalln(err)
+    }
 
-	t := r.DB("eve").Table("MarketOrders")
+    t := r.DB("eve").Table("MarketOrders")
 
-	for i := range ch {
-		r_err := t.Insert(i).Exec(session)
-		if r_err != nil {
-			log.Fatalln(r_err)
-		}
-		fmt.Print("C")
-	}
+    for i := range ch {
+        r_err := t.Insert(i).Exec(session)
+        if r_err != nil {
+            log.Fatalln(r_err)
+        }
+        fmt.Print("C")
+    }
 
-	done <- true
+    done <- true
 }
 
 func main() {
 
-	file, err := os.Open("orders.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
+    file, err := os.Open("orders.json")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer file.Close()
 
-	ch := make(chan chunk)
-	done := make(chan bool)
+    ch := make(chan chunk)
+    done := make(chan bool)
 
-	for i := 0; i < runtime.GOMAXPROCS(0); i++ {
-		go Writer(ch, done)
-	}
+    for i := 0; i < NUM_WRITERS; i++ {
+        go Writer(ch, done)
+    }
 
-	buf := chunk{}
-	i := 0
+    buf := chunk{}
+    i := 0
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
+    scanner := bufio.NewScanner(file)
+    for scanner.Scan() {
 
-		err := json.Unmarshal([]byte(scanner.Text()), &buf[i])
-		if err != nil {
-			log.Fatalln(err)
-		}
+        var doc map[string]interface{}
 
-		i++
+        //err := json.Unmarshal([]byte(scanner.Text()), &buf[i])
+        err := json.Unmarshal([]byte(scanner.Text()), &doc)
+        if err != nil {
+            log.Fatalln(err)
+        }
+        buf = append(buf, doc)
 
-		if i%100 == 99 {
-			fmt.Print(".")
-		}
+        i++
 
-		if i == cap(buf) {
-			fmt.Println("F")
-			ch <- buf
-			i = 0
-		}
+        if i == CHUNKSIZE {
+            fmt.Print("F")
+            ch <- buf
+            buf = chunk{}
+            i = 0
+        }
 
-	}
+    }
 
-	close(ch)
+    ch <- buf
 
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
+    close(ch)
 
-	for i := 0; i < runtime.GOMAXPROCS(0); i++ {
-		<-done
-	}
+    if err := scanner.Err(); err != nil {
+        log.Fatal(err)
+    }
 
-	close(done)
+    for i := 0; i < NUM_WRITERS; i++ {
+        <-done
+    }
+
+    close(done)
 
 }

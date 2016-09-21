@@ -33,7 +33,6 @@ def recreate(evedb='eve.db'):
     ]).run()
 
     load_schematics()
-    load_pi_prices()
 
 
 def load_schematics(filename='eve.db'):
@@ -187,11 +186,13 @@ def load_prices(typeIDs):
 
 def load_pi_prices():
 
-    ret1 = load_prices(
-        PlanetSchematics.map(lambda x: x['id']).union(
-            PlanetSchematics.concat_map(r.row['reqs']).map(lambda x: x['id'])
-        ).distinct().run()
-    )
+    types = PlanetSchematics.map(lambda x: x['id']).union(
+        PlanetSchematics.concat_map(r.row['reqs']).map(lambda x: x['id'])
+    ).distinct().run()
+
+    MarketOrders.filter(lambda x: r.expr(types).contains(x['type']['id'])).delete().run()
+
+    ret1 = load_prices(types)
 
     ret2 = PlanetSchematics.update(
         lambda x: with_price(x),
